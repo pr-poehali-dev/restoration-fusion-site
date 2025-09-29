@@ -68,6 +68,15 @@ const menuItems: MenuItem[] = [
 function Index() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [cart, setCart] = useState<{item: MenuItem, quantity: number}[]>([]);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [paymentStep, setPaymentStep] = useState<'cart' | 'payment' | 'success'>('cart');
+  const [paymentForm, setPaymentForm] = useState({
+    email: '',
+    cardNumber: '',
+    expiryDate: '',
+    cvv: '',
+    cardholderName: ''
+  });
   const [reservationForm, setReservationForm] = useState({
     name: '',
     phone: '',
@@ -90,6 +99,34 @@ function Index() {
     }
   };
 
+  const removeFromCart = (itemId: number) => {
+    setCart(cart.filter(cartItem => cartItem.item.id !== itemId));
+  };
+
+  const updateQuantity = (itemId: number, newQuantity: number) => {
+    if (newQuantity === 0) {
+      removeFromCart(itemId);
+    } else {
+      setCart(cart.map(cartItem => 
+        cartItem.item.id === itemId 
+          ? {...cartItem, quantity: newQuantity}
+          : cartItem
+      ));
+    }
+  };
+
+  const processPayment = () => {
+    // Simulate payment processing
+    setTimeout(() => {
+      setPaymentStep('success');
+      setCart([]);
+      setTimeout(() => {
+        setIsPaymentOpen(false);
+        setPaymentStep('cart');
+      }, 3000);
+    }, 2000);
+  };
+
   const filteredItems = selectedCategory === 'all' 
     ? menuItems 
     : menuItems.filter(item => item.category === selectedCategory);
@@ -109,49 +146,192 @@ function Index() {
             </div>
             <div className="hidden md:flex space-x-8">
               <a href="#home" className="text-cream hover:text-gold transition-colors font-montserrat">Главная</a>
+              <a href="#about" className="text-cream hover:text-gold transition-colors font-montserrat">О нас</a>
               <a href="#menu" className="text-cream hover:text-gold transition-colors font-montserrat">Меню</a>
-              <a href="#interior" className="text-cream hover:text-gold transition-colors font-montserrat">Интерьер</a>
+              <a href="#reviews" className="text-cream hover:text-gold transition-colors font-montserrat">Отзывы</a>
               <a href="#contact" className="text-cream hover:text-gold transition-colors font-montserrat">Контакты</a>
             </div>
             <div className="flex items-center space-x-4">
-              <Dialog>
+              <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="border-gold text-gold hover:bg-gold hover:text-brown">
                     <Icon name="ShoppingCart" size={16} className="mr-2" />
                     Корзина ({cart.length})
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle className="font-playfair text-xl">Ваш заказ</DialogTitle>
+                    <DialogTitle className="font-playfair text-xl">
+                      {paymentStep === 'cart' ? 'Ваш заказ' : 
+                       paymentStep === 'payment' ? 'Оплата заказа' : 'Заказ оформлен!'}
+                    </DialogTitle>
                   </DialogHeader>
-                  <div className="space-y-4">
-                    {cart.length === 0 ? (
-                      <p className="text-muted-foreground">Корзина пуста</p>
-                    ) : (
-                      <>
-                        {cart.map(cartItem => (
-                          <div key={cartItem.item.id} className="flex justify-between items-center">
-                            <div>
-                              <p className="font-medium">{cartItem.item.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {cartItem.quantity} × {cartItem.item.price.toLocaleString()} ₽
-                              </p>
+                  
+                  {paymentStep === 'cart' && (
+                    <div className="space-y-4">
+                      {cart.length === 0 ? (
+                        <p className="text-muted-foreground">Корзина пуста</p>
+                      ) : (
+                        <>
+                          <div className="max-h-60 overflow-y-auto space-y-3">
+                            {cart.map(cartItem => (
+                              <div key={cartItem.item.id} className="flex justify-between items-start p-3 bg-cream/20 rounded-lg">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm">{cartItem.item.name}</p>
+                                  <p className="text-xs text-muted-foreground mb-2">
+                                    {cartItem.item.price.toLocaleString()} ₽ за шт.
+                                  </p>
+                                  <div className="flex items-center space-x-2">
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      onClick={() => updateQuantity(cartItem.item.id, cartItem.quantity - 1)}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <Icon name="Minus" size={12} />
+                                    </Button>
+                                    <span className="text-sm font-medium w-8 text-center">{cartItem.quantity}</span>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      onClick={() => updateQuantity(cartItem.item.id, cartItem.quantity + 1)}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <Icon name="Plus" size={12} />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-semibold">
+                                    {(cartItem.item.price * cartItem.quantity).toLocaleString()} ₽
+                                  </p>
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={() => removeFromCart(cartItem.item.id)}
+                                    className="h-6 w-6 p-0 mt-1 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Icon name="Trash2" size={12} />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="border-t pt-4">
+                            <div className="flex justify-between font-bold text-lg">
+                              <span>Итого:</span>
+                              <span>{cartTotal.toLocaleString()} ₽</span>
                             </div>
+                            <Button 
+                              className="w-full mt-4 bg-gold hover:bg-gold-dark text-brown"
+                              onClick={() => setPaymentStep('payment')}
+                            >
+                              Перейти к оплате
+                            </Button>
                           </div>
-                        ))}
-                        <div className="border-t pt-4">
-                          <div className="flex justify-between font-bold text-lg">
-                            <span>Итого:</span>
-                            <span>{cartTotal.toLocaleString()} ₽</span>
-                          </div>
-                          <Button className="w-full mt-4 bg-gold hover:bg-gold-dark text-brown">
-                            Оформить заказ
-                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {paymentStep === 'payment' && (
+                    <div className="space-y-4">
+                      <div className="bg-cream/20 p-3 rounded-lg">
+                        <div className="flex justify-between text-sm">
+                          <span>Товаров: {cart.reduce((sum, item) => sum + item.quantity, 0)} шт.</span>
+                          <span className="font-semibold">{cartTotal.toLocaleString()} ₽</span>
                         </div>
-                      </>
-                    )}
-                  </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="payment-email">Email</Label>
+                          <Input 
+                            id="payment-email" 
+                            type="email"
+                            value={paymentForm.email}
+                            onChange={(e) => setPaymentForm({...paymentForm, email: e.target.value})}
+                            placeholder="your@email.com"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="cardholder-name">Имя владельца карты</Label>
+                          <Input 
+                            id="cardholder-name" 
+                            value={paymentForm.cardholderName}
+                            onChange={(e) => setPaymentForm({...paymentForm, cardholderName: e.target.value})}
+                            placeholder="IVAN PETROV"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="card-number">Номер карты</Label>
+                          <Input 
+                            id="card-number" 
+                            value={paymentForm.cardNumber}
+                            onChange={(e) => setPaymentForm({...paymentForm, cardNumber: e.target.value})}
+                            placeholder="1234 5678 9012 3456"
+                            maxLength={19}
+                          />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor="expiry-date">Срок действия</Label>
+                            <Input 
+                              id="expiry-date" 
+                              value={paymentForm.expiryDate}
+                              onChange={(e) => setPaymentForm({...paymentForm, expiryDate: e.target.value})}
+                              placeholder="MM/YY"
+                              maxLength={5}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="cvv">CVV</Label>
+                            <Input 
+                              id="cvv" 
+                              value={paymentForm.cvv}
+                              onChange={(e) => setPaymentForm({...paymentForm, cvv: e.target.value})}
+                              placeholder="123"
+                              maxLength={3}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setPaymentStep('cart')}
+                          className="flex-1"
+                        >
+                          Назад
+                        </Button>
+                        <Button 
+                          className="flex-1 bg-gold hover:bg-gold-dark text-brown"
+                          onClick={processPayment}
+                        >
+                          <Icon name="CreditCard" size={16} className="mr-2" />
+                          Оплатить {cartTotal.toLocaleString()} ₽
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentStep === 'success' && (
+                    <div className="text-center space-y-4">
+                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                        <Icon name="Check" size={32} className="text-green-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-green-700">Оплата прошла успешно!</h3>
+                        <p className="text-muted-foreground mt-2">
+                          Ваш заказ принят в обработку. Мы свяжемся с вами в ближайшее время.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </DialogContent>
               </Dialog>
             </div>
@@ -251,6 +431,65 @@ function Index() {
               <Icon name="Wine" size={20} className="mr-2" />
               Винная дегустация
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* About Section */}
+      <section id="about" className="py-20 bg-brown text-cream">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <h2 className="text-5xl font-playfair font-bold mb-8">О ресторане</h2>
+              <div className="space-y-6 text-cream/90 font-cormorant text-lg leading-relaxed">
+                <p>
+                  Sole di Provenza — это место, где французская изысканность встречается 
+                  с итальянской страстью к гастрономии. Наш ресторан был основан в 2015 году 
+                  шеф-поваром Антонио Дель Соле, который мечтал создать пространство, 
+                  объединяющее лучшие кулинарные традиции Прованса и Тосканы.
+                </p>
+                <p>
+                  Мы гордимся нашей винной коллекцией, включающей более 300 наименований 
+                  из лучших хозяйств Франции и Италии. Каждое блюдо в нашем меню — это 
+                  результат тщательного отбора ингредиентов и многолетнего опыта наших поваров.
+                </p>
+                <p>
+                  Атмосфера ресторана создана для того, чтобы каждый гость чувствовал себя 
+                  частью большой гастрономической семьи. Здесь рождаются воспоминания, 
+                  которые остаются на всю жизнь.
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-6 mt-12">
+                <div className="text-center">
+                  <div className="text-3xl font-playfair font-bold text-gold mb-2">9+</div>
+                  <p className="text-cream/70 font-montserrat text-sm">лет опыта</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-playfair font-bold text-gold mb-2">300+</div>
+                  <p className="text-cream/70 font-montserrat text-sm">видов вин</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-playfair font-bold text-gold mb-2">50+</div>
+                  <p className="text-cream/70 font-montserrat text-sm">авторских блюд</p>
+                </div>
+              </div>
+            </div>
+            <div className="relative">
+              <div className="aspect-square overflow-hidden rounded-2xl">
+                <img 
+                  src="/img/cfbd58d7-5102-41b9-9ae2-a0e51472733b.jpg" 
+                  alt="Интерьер ресторана Sole di Provenza"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="absolute -bottom-6 -right-6 w-48 h-48 overflow-hidden rounded-2xl border-4 border-gold">
+                <img 
+                  src="/img/8b098023-b428-4ad8-868e-f4388d97049b.jpg" 
+                  alt="Шеф-повар за работой"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -401,6 +640,143 @@ function Index() {
             <Button size="lg" className="mt-8 bg-gold hover:bg-gold-dark text-brown font-montserrat font-semibold px-8 py-4">
               Записаться на дегустацию
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Reviews Section */}
+      <section id="reviews" className="py-20 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-5xl font-playfair font-bold text-brown mb-4">
+              Отзывы наших гостей
+            </h2>
+            <p className="text-xl text-brown/70 font-cormorant max-w-2xl mx-auto">
+              Нам доверяют ценители высокой кухни и изысканных вин
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                name: "Елена Морозова",
+                role: "Ресторанный критик",
+                rating: 5,
+                text: "Sole di Provenza — это настоящая жемчужина московской гастросцены. Каждое блюдо — произведение искусства, а винная карта впечатляет даже искушённых сомелье.",
+                date: "2 недели назад"
+              },
+              {
+                name: "Александр Петров",
+                role: "Постоянный гость",
+                rating: 5,
+                text: "Уже третий раз празднуем здесь важные события. Безупречный сервис, потрясающая кухня и атмосфера, которая заставляет возвращаться снова и снова.",
+                date: "1 месяц назад"
+              },
+              {
+                name: "Мария Волкова",
+                role: "Винный блогер",
+                rating: 5,
+                text: "Дегустация с сомелье превзошла все ожидания! Профессионализм команды и подбор вин к блюдам — на высшем уровне. Обязательно вернёмся.",
+                date: "3 недели назад"
+              },
+              {
+                name: "Дмитрий Козлов",
+                role: "Бизнесмен",
+                rating: 5,
+                text: "Идеальное место для деловых встреч. Тихая обстановка, изысканная кухня и внимательный персонал. Все клиенты остались в восторге.",
+                date: "2 недели назад"
+              },
+              {
+                name: "Анна Соколова",
+                role: "Фуд-блогер",
+                rating: 5,
+                text: "Трюфельное ризотто — это что-то невероятное! А десерт тирамису просто тает во рту. Фотографии не передают всей красоты подачи блюд.",
+                date: "1 неделя назад"
+              },
+              {
+                name: "Игорь Смирнов",
+                role: "Сомелье",
+                rating: 5,
+                text: "Коллекция вин впечатляет своим разнообразием и качеством. Особенно порадовали редкие французские вина. Команда понимает толк в виноделии!",
+                date: "3 недели назад"
+              }
+            ].map((review, index) => (
+              <Card key={index} className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-cream/30 to-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <div className="w-12 h-12 bg-gold rounded-full flex items-center justify-center mr-4">
+                      <span className="text-brown font-semibold text-lg">
+                        {review.name.split(' ').map(n => n[0]).join('')}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="font-playfair font-semibold text-brown">{review.name}</h3>
+                      <p className="text-sm text-brown/60 font-montserrat">{review.role}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex mb-4">
+                    {Array.from({ length: review.rating }, (_, i) => (
+                      <Icon key={i} name="Star" size={16} className="text-gold fill-current" />
+                    ))}
+                  </div>
+                  
+                  <p className="text-brown/80 font-cormorant leading-relaxed mb-4">
+                    "{review.text}"
+                  </p>
+                  
+                  <p className="text-xs text-brown/50 font-montserrat">
+                    {review.date}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="text-center mt-12">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="lg" className="bg-gold hover:bg-gold-dark text-brown font-montserrat font-semibold px-8 py-4">
+                  <Icon name="MessageCircle" size={20} className="mr-2" />
+                  Оставить отзыв
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="font-playfair text-xl">Ваш отзыв</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="review-name">Имя</Label>
+                    <Input id="review-name" placeholder="Ваше имя" />
+                  </div>
+                  <div>
+                    <Label>Оценка</Label>
+                    <div className="flex space-x-1 mt-2">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <Icon 
+                          key={star} 
+                          name="Star" 
+                          size={24} 
+                          className="text-gold hover:fill-current cursor-pointer transition-colors" 
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="review-text">Отзыв</Label>
+                    <Textarea 
+                      id="review-text" 
+                      placeholder="Поделитесь своими впечатлениями о ресторане..."
+                      rows={4}
+                    />
+                  </div>
+                  <Button className="w-full bg-gold hover:bg-gold-dark text-brown">
+                    Отправить отзыв
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </section>
